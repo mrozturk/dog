@@ -10,6 +10,8 @@
 #   Set-ExecutionPolicy -Scope Process Bypass -Force; .\setup-windows-agent.ps1
 
 $ErrorActionPreference = 'Continue'
+# Konsola tıklanınca çıktının donmasını (QuickEdit) engelle
+Set-ItemProperty -Path 'HKCU:\Console' -Name QuickEdit -Value 0 -ErrorAction SilentlyContinue
 $AgentDir = Join-Path $env:USERPROFILE 'agent'
 
 function Log($msg) { Write-Host "`n==> $msg" -ForegroundColor Green }
@@ -22,11 +24,15 @@ if (-not $isAdmin) {
 }
 
 Log "Tailscale ve Git kuruluyor (winget)"
-winget install --id Tailscale.Tailscale -e --accept-source-agreements --accept-package-agreements --silent
-winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements --silent
+if (-not (Test-Path "$env:ProgramFiles\Tailscale\tailscale.exe")) {
+  winget install --id Tailscale.Tailscale -e --source winget --accept-source-agreements --accept-package-agreements --silent --disable-interactivity
+}
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+  winget install --id Git.Git -e --source winget --accept-source-agreements --accept-package-agreements --silent --disable-interactivity
+}
 $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
 
-Log "OpenSSH Server açılıyor"
+Log "OpenSSH Server açılıyor (Windows Update'ten iner, 5-15 dk sürebilir, bekle)"
 $cap = Get-WindowsCapability -Online -Name 'OpenSSH.Server*' | Select-Object -First 1
 if ($cap.State -ne 'Installed') { Add-WindowsCapability -Online -Name $cap.Name | Out-Null }
 Set-Service -Name sshd -StartupType Automatic
@@ -80,7 +86,7 @@ $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoi
 Register-ScheduledTask -TaskName 'Claude Remote Control' -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
 
 Log "Tailscale'e bağlanılıyor (tarayıcı açılırsa giriş yap)"
-& "$env:ProgramFiles\Tailscale\tailscale.exe" up --unattended
+& "$env:ProgramFiles\Tailscale\tailscale.exe" up --unattended --timeout 180s
 $tsIp = (& "$env:ProgramFiles\Tailscale\tailscale.exe" ip -4 2>$null | Select-Object -First 1)
 
 Write-Host @"
