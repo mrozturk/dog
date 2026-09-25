@@ -10,6 +10,9 @@
 #   Set-ExecutionPolicy -Scope Process Bypass -Force; .\setup-windows-agent.ps1
 
 $ErrorActionPreference = 'Continue'
+# PowerShell 5.1'de indirme ilerleme çubuğu indirmeyi aşırı yavaşlatıyor / donmuş gösteriyor
+$ProgressPreference = 'SilentlyContinue'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 # Konsola tıklanınca çıktının donmasını (QuickEdit) engelle
 Set-ItemProperty -Path 'HKCU:\Console' -Name QuickEdit -Value 0 -ErrorAction SilentlyContinue
 $AgentDir = Join-Path $env:USERPROFILE 'agent'
