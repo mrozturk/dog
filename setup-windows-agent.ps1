@@ -66,9 +66,15 @@ try {
 } catch { Write-Host "Uzak Masaüstü açılamadı (muhtemelen Windows Home)." -ForegroundColor Yellow }
 
 Log "Claude Code kuruluyor"
-if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+$claudeBin = Join-Path $env:USERPROFILE '.local\bin'
+if (-not (Test-Path (Join-Path $claudeBin 'claude.exe'))) {
   Invoke-RestMethod https://claude.ai/install.ps1 | Invoke-Expression
 }
+$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+if ($userPath -notlike "*$claudeBin*") {
+  [Environment]::SetEnvironmentVariable('Path', "$userPath;$claudeBin", 'User')
+}
+$env:Path += ";$claudeBin"
 
 Log "Ajan çalışma klasörü ve oturum açılışında remote-control görevi"
 New-Item -ItemType Directory -Force -Path $AgentDir | Out-Null
